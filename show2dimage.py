@@ -16,7 +16,8 @@ from PyQt5.QtWidgets import (QApplication, QHBoxLayout,
                              QVBoxLayout, QWidget)
 
 from PyQt5 import QtWidgets, QtCore, QtGui
-from PyQt5.QtGui import QPixmap, QImage, QColor, qRgb
+from PyQt5.QtGui import QPixmap, QImage
+from PyQt5.QtCore import QSize
 import pyqtgraph as pg
 
 from numba import jit, prange, njit
@@ -24,7 +25,6 @@ import numpy as np
 
 from pathlib import Path
 import sys
-from PIL import Image
 from time import time
 import types
 import os
@@ -97,7 +97,7 @@ class filedialog(QWidget):
     def __init__(self, parent=None):
         super(filedialog, self).__init__(parent=parent)
         
-        #setting up a QFileDialog
+        #setting up interface
         self.one = QVBoxLayout(self)
         self.one.setAlignment(Qt.AlignTop)
         #adding buttons for interactive choices
@@ -118,13 +118,16 @@ class filedialog(QWidget):
         self.slice_number.setStyleSheet(QLabel_style)
         self.one.addWidget(self.slice_number)
         
-        #showing initial dog image
+        #displaying initial dog image on interface
         #check file location when using this code on different computer!!
         dog_image = io.imread('C:\cygwin64\home\chrhw\Research\dog.tif')
+        self.slices, self.rows, self.cols = dog_image.shape
         rotated_dog = np.transpose(dog_image, (1, 0, 2))
         rotated_dog = np.flip(rotated_dog, 1)
         self.current_image = rotated_dog
         self.labels = QLabel(self)
+        labels_size = QSize(700, 500)
+        self.labels.setFixedSize(labels_size)
         image_added = QPixmap('C:\cygwin64\home\chrhw\Research\dog.tif')
         self.labels.setPixmap(image_added)
         self.one.addWidget(self.labels)
@@ -146,26 +149,35 @@ class filedialog(QWidget):
         Displays user's choice of tif file on interface
         No returns
         '''
+        self.slice_number.clear()
         #grabbing file name of user's wanted image
         open_file = QtGui.QFileDialog.getOpenFileName(self, 'Open Image',
             'c:\\', "Image files (*.tif)")
         open_image = open_file[0]
         
-        #updating self.current_image to user's choice
+        #updating self.current_image to user's image
         self.user_image = io.imread(open_image)
         rotated_user = np.transpose(self.user_image, (1, 0, 2))
         rotated_user = np.flip(rotated_user, 1)
         self.current_image = rotated_user
-        #grabbing slice info
+        
+        #grabbing slice info for user's image
         self.slices, self.rows, self.cols = self.user_image.shape
-        self.start_index = self.slices//2
-        #displaying a single slice at self.start_index
-        self.slice_array = self.user_image[self.start_index, :, :]
-        slice_image = self.toQImage()
-        image_added1 = QPixmap.fromImage(slice_image)
-        self.labels.setPixmap(image_added1)
-        self.slice_number.setText("slice %s" % self.start_index)
-     
+        #if multi-stack
+        if (self.slices < self.rows and self.slices < self.cols):
+            self.start_index = self.slices//2
+        
+            #displaying a single slice of user's image on interface
+            self.slice_array = self.user_image[self.start_index, :, :]
+            slice_image = self.toQImage()
+            image_added1 = QPixmap.fromImage(slice_image)
+            self.labels.setPixmap(image_added1)
+            self.slice_number.setText("slice %s" % self.start_index)
+        #if not multi-stack
+        else:
+            image_added1 = QPixmap(open_image)
+            self.labels.setPixmap(image_added1)
+        
     def transformFile(self):
         '''
         This function rotates the current image shown on the interface by 90 degrees 
@@ -181,18 +193,19 @@ class filedialog(QWidget):
         Writes to file the transformed image
         No returns
         '''
-        #making change to user's image
+        self.slice_number.clear()
+        #transforming to user's image
         #change later (TRANSFORM)
         rotated_user1 = np.flip(self.current_image, 1)
         self.current_image = rotated_user1
         
-        #saving changed image
+        #saving transformed image to user's choice of name
         save_file = QtGui.QFileDialog.getSaveFileName(self, "Save Image",
             'c:\\', "Tif Files (*.tif)")
         save_image = save_file[0]
         io.imsave(save_image, self.current_image)
         
-        #showing changed user's image
+        #displaying transformed user's image on interface
         rotated_user1 = np.transpose(rotated_user1, (1, 0, 2))
         rotated_user1 = np.flip(rotated_user1, 1)
         image_added2 = QPixmap(save_image)
@@ -215,8 +228,9 @@ class filedialog(QWidget):
         Writes to file all transformed images with the tag "_transformed.tif"
         No returns
         '''
-        #showing original dog image
+        #displaying original dog image
         dog_image = io.imread('C:\cygwin64\home\chrhw\Research\dog.tif')
+        self.slices, self.rows, self.cols = dog_image.shape
         rotated_dog = np.transpose(dog_image, (1, 0, 2))
         rotated_dog = np.flip(rotated_dog, 1)
         self.current_image = rotated_dog
@@ -224,11 +238,11 @@ class filedialog(QWidget):
         self.labels.setPixmap(image_added3)
         self.slice_number.clear()
         
-        #grabbing directory from user choice
+        #grabbing directory of user choice
         dir_name = QtGui.QFileDialog.getExistingDirectory(self, "Open Directory",
             'c:\\')
         
-        #transforming all tif images in directory
+        #transforming and saving all tif images in chosen directory
         image_list = self.getFileNames(dir_name)
         for i in image_list:
             new_name = i[:-4] + '_transformed.tif'
@@ -260,7 +274,6 @@ class filedialog(QWidget):
                     if (suffix.lower() in img_file.lower()) and '_thumb_' not in img_file:
                         img_filelist.append(os.path.join(current_location, img_file))
         img_filelist.sort()
-
         return img_filelist
     
     def wheelEvent(self, event):
@@ -278,11 +291,16 @@ class filedialog(QWidget):
         Calls function updateSlice with appropriate slice number
         No returns
         '''
-        if (event.angleDelta().y() > 0):
-            self.start_index = (self.start_index + 1) % self.slices
-        elif (event.angleDelta().y() < 0):
-            self.start_index = (self.start_index - 1) % self.slices
-        self.updateSlice()
+        if (self.slices < self.rows and self.slices < self.cols):
+            #when wheel is scrolled up, increase slice #
+            if (event.angleDelta().y() > 0):
+                self.start_index = (self.start_index + 1) % self.slices
+            #when wheel is scrolled down, decrease slice #
+            elif (event.angleDelta().y() < 0):
+                self.start_index = (self.start_index - 1) % self.slices
+        
+            #update slice
+            self.updateSlice()
     
     def updateSlice(self):
         '''
@@ -324,7 +342,7 @@ class Widget(QWidget):
 
         #setting up a graphics window
         self.setStyleSheet(f"Widget {{ background-color: {colors['dark']}; }}")
-        self.setWindowTitle("Change the Picture!")
+        self.setWindowTitle("Tif Image Viewer")
         
         #adding filedialog class to graphics window
         self.horizontalLayout = QHBoxLayout(self)
