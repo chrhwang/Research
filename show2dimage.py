@@ -3,11 +3,14 @@
     Created on 20200206
     
     This code allows the viewing of tif images on an interface
-    and provides the user with the following three interactive choices.
+    and provides the user with the following six interactive choices.
     
     1. Open up a different tif image.
     2. Transform the tif image seen and save the transformed image.
     3. Transform a whole directory of tif images and save the transformed images.
+    4. Load a model (*.hdf5 file) used for transforming images.
+    5. Save the seen image without transforming.
+    6. Transform the tif image seen without saving.
 """
 
 from PyQt5.QtCore import Qt
@@ -154,29 +157,29 @@ class filedialog(QWidget):
         open_file = QtGui.QFileDialog.getOpenFileName(self, 'Open Image',
             'c:\\', "Image files (*.tif)")
         open_image = open_file[0]
+        if (open_image != ""):
+            #updating self.current_image to user's image
+            self.user_image = io.imread(open_image)
+            rotated_user = np.transpose(self.user_image, (1, 0, 2))
+            rotated_user = np.flip(rotated_user, 1)
+            self.current_image = rotated_user
         
-        #updating self.current_image to user's image
-        self.user_image = io.imread(open_image)
-        rotated_user = np.transpose(self.user_image, (1, 0, 2))
-        rotated_user = np.flip(rotated_user, 1)
-        self.current_image = rotated_user
+            #grabbing slice info for user's image
+            self.slices, self.rows, self.cols = self.user_image.shape
+            #if multi-stack
+            if (self.slices < self.rows and self.slices < self.cols):
+                self.start_index = self.slices//2
         
-        #grabbing slice info for user's image
-        self.slices, self.rows, self.cols = self.user_image.shape
-        #if multi-stack
-        if (self.slices < self.rows and self.slices < self.cols):
-            self.start_index = self.slices//2
-        
-            #displaying a single slice of user's image on interface
-            self.slice_array = self.user_image[self.start_index, :, :]
-            slice_image = self.toQImage()
-            image_added1 = QPixmap.fromImage(slice_image)
-            self.labels.setPixmap(image_added1)
-            self.slice_number.setText("slice %s" % self.start_index)
-        #if not multi-stack
-        else:
-            image_added1 = QPixmap(open_image)
-            self.labels.setPixmap(image_added1)
+                #displaying a single slice of user's image on interface
+                self.slice_array = self.user_image[self.start_index, :, :]
+                slice_image = self.toQImage()
+                image_added1 = QPixmap.fromImage(slice_image)
+                self.labels.setPixmap(image_added1)
+                self.slice_number.setText("slice %s" % self.start_index)
+            #if not multi-stack
+            else:
+                image_added1 = QPixmap(open_image)
+                self.labels.setPixmap(image_added1)
         
     def transformFile(self):
         '''
@@ -193,6 +196,8 @@ class filedialog(QWidget):
         Writes to file the transformed image
         No returns
         '''
+        #TODO: change np.flip into appropriate transformation and test
+        
         self.slice_number.clear()
         #transforming to user's image
         #change later (TRANSFORM)
