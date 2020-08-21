@@ -105,18 +105,33 @@ class filedialog(QWidget):
         self.one.setAlignment(Qt.AlignTop)
         #adding buttons for interactive choices
         self.button_getFile = QtWidgets.QPushButton("Click to open a new tif image")
+        self.button_saveFile = QtWidgets.QPushButton("Click to save shown image")
+        self.button_justTransFile = QtWidgets.QPushButton("Click to transform shown image")
         self.button_transformFile = QtWidgets.QPushButton("Click to transform shown image and save")
         self.button_transformDir = QtWidgets.QPushButton("Click to transform a whole directory")
+        self.button_getModel = QtWidgets.QPushButton("Click to import a model")
+        
         self.button_getFile.clicked.connect(self.getFile)
+        self.button_saveFile.clicked.connect(self.saveFile)
+        self.button_justTransFile.clicked.connect(self.justTransFile)
         self.button_transformFile.clicked.connect(self.transformFile)
         self.button_transformDir.clicked.connect(self.transformDir)
+        #self.button_getModel.clicked.connect(self.getModel)
+        
         self.one.addWidget(self.button_getFile)
+        self.one.addWidget(self.button_saveFile)
+        self.one.addWidget(self.button_justTransFile)
         self.one.addWidget(self.button_transformFile)
         self.one.addWidget(self.button_transformDir)
+        self.one.addWidget(self.button_getModel)
+        
         self.setLayout(self.one)
         self.button_getFile.setStyleSheet(QPushButton_style)
+        self.button_saveFile.setStyleSheet(QPushButton_style)
+        self.button_justTransFile.setStyleSheet(QPushButton_style)
         self.button_transformFile.setStyleSheet(QPushButton_style)
         self.button_transformDir.setStyleSheet(QPushButton_style)
+        self.button_getModel.setStyleSheet(QPushButton_style)
         self.slice_number = QLabel()
         self.slice_number.setStyleSheet(QLabel_style)
         self.one.addWidget(self.slice_number)
@@ -134,7 +149,6 @@ class filedialog(QWidget):
         image_added = QPixmap('C:\cygwin64\home\chrhw\Research\dog.tif')
         self.labels.setPixmap(image_added)
         self.one.addWidget(self.labels)
-
         
     def getFile(self):
         '''
@@ -145,7 +159,7 @@ class filedialog(QWidget):
     
         Parameters
         ===========
-        self: instance of class
+        self: instance of class - uses user's choice of file name
         
         Outputs
         ===========
@@ -154,8 +168,7 @@ class filedialog(QWidget):
         '''
         self.slice_number.clear()
         #grabbing file name of user's wanted image
-        open_file = QtGui.QFileDialog.getOpenFileName(self, 'Open Image',
-            'c:\\', "Image files (*.tif)")
+        open_file = QtGui.QFileDialog.getOpenFileName(self, 'Open Image', 'c:\\', "Image files (*.tif)")
         open_image = open_file[0]
         if (open_image != ""):
             #updating self.current_image to user's image
@@ -181,40 +194,78 @@ class filedialog(QWidget):
                 image_added1 = QPixmap(open_image)
                 self.labels.setPixmap(image_added1)
         
+    def saveFile(self):
+        '''
+        This function utilizes QFileDialog to save the current image shown under user's choice of file name.
+        
+        Parameters
+        ===========
+        self: instance of class - uses user's choice of file name
+        
+        Outputs
+        ===========
+        Writes to file the current image
+        No returns
+        '''
+        save_file = QtGui.QFileDialog.getSaveFileName(self, "Save Image", 'c:\\', "Tif Files (*.tif)")
+        save_image = save_file[0]
+        if (save_image != ""):
+            save_current = np.flip(self.current_image, 1)
+            save_current = np.transpose(save_current, (1, 0, 2))
+            io.imsave(save_image, save_current)
+        
+    def justTransFile(self):
+        '''
+        This function TRANSFORMS the current image shown.
+        The transformed image is displayed on the interface.
+        
+        Parameters
+        ===========
+        self: instance of class - uses current image shown
+        
+        Outputs
+        ===========
+        Displays the transformed image
+        No returns
+        '''
+        #TODO: change np. flip into appropriate transformation and test
+        
+        self.slice_number.clear()
+        #transforming to user's image
+        #change later (TRANSFORM)
+        self.current_image = np.flip(self.current_image, 1)
+        
+        #displaying transformed user's image on interface
+        io.imsave('temp.tif', self.current_image)
+        image_added2 = QPixmap("temp.tif")
+        self.current_image = io.imread("temp.tif")
+        os.remove("temp.tif")
+        self.labels.setPixmap(image_added2)
+        rotated_user1 = np.transpose(self.current_image, (1, 0, 2))
+        rotated_user1 = np.flip(rotated_user1, 1)
+        self.current_image = rotated_user1
+        
     def transformFile(self):
         '''
-        This function rotates the current image shown on the interface by 90 degrees 
+        This function TRANSFORMS the current image shown on the interface using justTransFile
         and utilizes QFileDialog to save the image under user's choice of file name.
         The transformed image is displayed on the interface.
     
         Parameters
         ===========
-        self: instance of class
+        self: instance of class - uses current image shown
         
         Outputs
         ===========
         Writes to file the transformed image
+        Displays the transformed image
         No returns
         '''
-        #TODO: change np.flip into appropriate transformation and test
-        
-        self.slice_number.clear()
-        #transforming to user's image
-        #change later (TRANSFORM)
-        rotated_user1 = np.flip(self.current_image, 1)
-        self.current_image = rotated_user1
+        #transforming current image
+        self.justTransFile()
         
         #saving transformed image to user's choice of name
-        save_file = QtGui.QFileDialog.getSaveFileName(self, "Save Image",
-            'c:\\', "Tif Files (*.tif)")
-        save_image = save_file[0]
-        io.imsave(save_image, self.current_image)
-        
-        #displaying transformed user's image on interface
-        rotated_user1 = np.transpose(rotated_user1, (1, 0, 2))
-        rotated_user1 = np.flip(rotated_user1, 1)
-        image_added2 = QPixmap(save_image)
-        self.labels.setPixmap(image_added2)
+        self.saveFile()
         
     def transformDir(self):
         '''
@@ -226,11 +277,12 @@ class filedialog(QWidget):
     
         Parameters
         ===========
-        self: instance of class
+        self: instance of class - uses user's choice of directory
         
         Outputs
         ===========
         Writes to file all transformed images with the tag "_transformed.tif"
+        Displays original dog image
         No returns
         '''
         #displaying original dog image
@@ -243,19 +295,19 @@ class filedialog(QWidget):
         self.labels.setPixmap(image_added3)
         self.slice_number.clear()
         
-        #grabbing directory of user choice
-        dir_name = QtGui.QFileDialog.getExistingDirectory(self, "Open Directory",
-            'c:\\')
+        #grabbing directory of user's choice
+        dir_name = QtGui.QFileDialog.getExistingDirectory(self, "Open Directory", 'c:\\')
         
         #transforming and saving all tif images in chosen directory
-        image_list = self.getFileNames(dir_name)
-        for i in image_list:
-            new_name = i[:-4] + '_transformed.tif'
-            image_i = io.imread(i)
-            rotated_i = np.transpose(image_i, (1, 0, 2))
-            rotated_i = np.flip(rotated_i, 1)
-            new_i = np.flip(rotated_i, 1)
-            io.imsave(new_name, new_i)
+        if (dir_name != ""):
+            image_list = self.getFileNames(dir_name)
+            for i in image_list:
+                new_name = i[:-4] + '_transformed.tif'
+                image_i = io.imread(i)
+                rotated_i = np.transpose(image_i, (1, 0, 2))
+                rotated_i = np.flip(rotated_i, 1)
+                new_i = np.flip(rotated_i, 1)
+                io.imsave(new_name, new_i)
         
     def getFileNames(self, root_directory, suffix = '.tif'):
         '''
@@ -264,7 +316,7 @@ class filedialog(QWidget):
     
         Parameters
         ===========
-        self: instance of class
+        self: instance of class - uses user's choice of directory
         root_directory: directory of choice
         suffix = '.tif': suffix of file names wanted is '.tif'
         
@@ -288,7 +340,7 @@ class filedialog(QWidget):
     
         Parameters
         ===========
-        self: instance of class
+        self: instance of class - uses user's mouse control
         event: wheel event
         
         Outputs
@@ -313,7 +365,7 @@ class filedialog(QWidget):
         
         Parameters
         ===========
-        self: instance of class
+        self: instance of class - uses current image characteristics to update slice
         
         Outputs
         ===========
@@ -332,7 +384,7 @@ class filedialog(QWidget):
     
         Parameters
         ===========
-        self: instance of class
+        self: instance of class - uses current image slice
         
         Outputs
         ===========
