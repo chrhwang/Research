@@ -103,6 +103,7 @@ class filedialog(QWidget):
         #setting up interface
         self.one = QVBoxLayout(self)
         self.one.setAlignment(Qt.AlignTop)
+        
         #adding buttons for interactive choices
         self.button_getFile = QtWidgets.QPushButton("Click to open a new tif image")
         self.button_saveFile = QtWidgets.QPushButton("Click to save shown image")
@@ -125,6 +126,7 @@ class filedialog(QWidget):
         self.one.addWidget(self.button_transformDir)
         self.one.addWidget(self.button_getModel)
         
+        #layout details
         self.setLayout(self.one)
         self.button_getFile.setStyleSheet(QPushButton_style)
         self.button_saveFile.setStyleSheet(QPushButton_style)
@@ -132,6 +134,8 @@ class filedialog(QWidget):
         self.button_transformFile.setStyleSheet(QPushButton_style)
         self.button_transformDir.setStyleSheet(QPushButton_style)
         self.button_getModel.setStyleSheet(QPushButton_style)
+        
+        #adding slice label
         self.slice_number = QLabel()
         self.slice_number.setStyleSheet(QLabel_style)
         self.one.addWidget(self.slice_number)
@@ -140,9 +144,8 @@ class filedialog(QWidget):
         #check file location when using this code on different computer!!
         dog_image = io.imread('C:\cygwin64\home\chrhw\Research\dog.tif')
         self.slices, self.rows, self.cols = dog_image.shape
-        rotated_dog = np.transpose(dog_image, (1, 0, 2))
-        rotated_dog = np.flip(rotated_dog, 1)
-        self.current_image = rotated_dog
+        self.current_image = np.transpose(dog_image, (1, 0, 2))
+        self.current_image = np.flip(self.current_image, 1)
         self.labels = QLabel(self)
         labels_size = QSize(700, 500)
         self.labels.setFixedSize(labels_size)
@@ -167,30 +170,46 @@ class filedialog(QWidget):
         No returns
         '''
         self.slice_number.clear()
+        
         #grabbing file name of user's wanted image
         open_file = QtGui.QFileDialog.getOpenFileName(self, 'Open Image', 'c:\\', "Image files (*.tif)")
         open_image = open_file[0]
+        
+        #showing image if user actually selected an image
         if (open_image != ""):
-            #updating self.current_image to user's image
+        
+            #opening image
             self.user_image = io.imread(open_image)
-            rotated_user = np.transpose(self.user_image, (1, 0, 2))
-            rotated_user = np.flip(rotated_user, 1)
-            self.current_image = rotated_user
+            
+            #if shape of image is 3
+            if (self.user_image.ndim == 3):
+            
+                #updating self.current_image to user's image
+                self.current_image = np.transpose(self.user_image, (1, 0, 2))
+                self.current_image = np.flip(self.current_image, 1)
+            
+                #grabbing slice info for user's image
+                self.slices, self.rows, self.cols = self.user_image.shape
+                
+                #if multi-stack
+                if (self.slices < self.rows and self.slices < self.cols):
+                    self.start_index = self.slices//2
         
-            #grabbing slice info for user's image
-            self.slices, self.rows, self.cols = self.user_image.shape
-            #if multi-stack
-            if (self.slices < self.rows and self.slices < self.cols):
-                self.start_index = self.slices//2
-        
-                #displaying a single slice of user's image on interface
-                self.slice_array = self.user_image[self.start_index, :, :]
-                slice_image = self.toQImage()
-                image_added1 = QPixmap.fromImage(slice_image)
-                self.labels.setPixmap(image_added1)
-                self.slice_number.setText("slice %s" % self.start_index)
-            #if not multi-stack
+                    #displaying a single slice of user's image on interface
+                    self.slice_array = self.user_image[self.start_index, :, :]
+                    slice_image = self.toQImage()
+                    image_added1 = QPixmap.fromImage(slice_image)
+                    self.labels.setPixmap(image_added1)
+                    self.slice_number.setText("slice %s" % self.start_index)
+                
+                #if not multi-stack
+                else:
+                    image_added1 = QPixmap(open_image)
+                    self.labels.setPixmap(image_added1)
+            
+            #handling non-3 shape
             else:
+                self.current_image = self.user_image
                 image_added1 = QPixmap(open_image)
                 self.labels.setPixmap(image_added1)
         
@@ -209,10 +228,18 @@ class filedialog(QWidget):
         '''
         save_file = QtGui.QFileDialog.getSaveFileName(self, "Save Image", 'c:\\', "Tif Files (*.tif)")
         save_image = save_file[0]
+        
+        #saving image if user provided a save name
         if (save_image != ""):
-            save_current = np.flip(self.current_image, 1)
-            save_current = np.transpose(save_current, (1, 0, 2))
-            io.imsave(save_image, save_current)
+        
+            #if shape of image is 3
+            if (self.user_image.ndim == 3):
+                save_current = np.flip(self.current_image, 1)
+                save_current = np.transpose(save_current, (1, 0, 2))
+                io.imsave(save_image, save_current)
+            #handling all other cases
+            else:
+                io.imsave(save_image, self.current_image)
         
     def justTransFile(self):
         '''
@@ -228,9 +255,9 @@ class filedialog(QWidget):
         Displays the transformed image
         No returns
         '''
+        self.slice_number.clear()
         #TODO: change np. flip into appropriate transformation and test
         
-        self.slice_number.clear()
         #transforming to user's image
         #change later (TRANSFORM)
         self.current_image = np.flip(self.current_image, 1)
@@ -241,9 +268,9 @@ class filedialog(QWidget):
         self.current_image = io.imread("temp.tif")
         os.remove("temp.tif")
         self.labels.setPixmap(image_added2)
-        rotated_user1 = np.transpose(self.current_image, (1, 0, 2))
-        rotated_user1 = np.flip(rotated_user1, 1)
-        self.current_image = rotated_user1
+        if (self.user_image.ndim == 3):
+            self.current_image = np.transpose(self.current_image, (1, 0, 2))
+            self.current_image = np.flip(self.current_image, 1)
         
     def transformFile(self):
         '''
@@ -288,9 +315,8 @@ class filedialog(QWidget):
         #displaying original dog image
         dog_image = io.imread('C:\cygwin64\home\chrhw\Research\dog.tif')
         self.slices, self.rows, self.cols = dog_image.shape
-        rotated_dog = np.transpose(dog_image, (1, 0, 2))
-        rotated_dog = np.flip(rotated_dog, 1)
-        self.current_image = rotated_dog
+        self.current_image = np.transpose(dog_image, (1, 0, 2))
+        self.current_image = np.flip(self.current_image, 1)
         image_added3 = QPixmap('C:\cygwin64\home\chrhw\Research\dog.tif')
         self.labels.setPixmap(image_added3)
         self.slice_number.clear()
@@ -304,10 +330,11 @@ class filedialog(QWidget):
             for i in image_list:
                 new_name = i[:-4] + '_transformed.tif'
                 image_i = io.imread(i)
-                rotated_i = np.transpose(image_i, (1, 0, 2))
-                rotated_i = np.flip(rotated_i, 1)
-                new_i = np.flip(rotated_i, 1)
-                io.imsave(new_name, new_i)
+                if (image_i.ndim == 3):
+                    image_i = np.transpose(image_i, (1, 0, 2))
+                    image_i = np.flip(image_i, 1)
+                image_i = np.flip(image_i, 1)
+                io.imsave(new_name, image_i)
         
     def getFileNames(self, root_directory, suffix = '.tif'):
         '''
@@ -348,7 +375,7 @@ class filedialog(QWidget):
         Calls function updateSlice with appropriate slice number
         No returns
         '''
-        if (self.slices < self.rows and self.slices < self.cols):
+        if (self.current_image.ndim == 3 and self.slices < self.rows and self.slices < self.cols):
             #when wheel is scrolled up, increase slice #
             if (event.angleDelta().y() > 0):
                 self.start_index = (self.start_index + 1) % self.slices
