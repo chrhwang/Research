@@ -233,7 +233,7 @@ class filedialog(QWidget):
         if (save_image != ""):
         
             #if shape of image is 3
-            if (self.user_image.ndim == 3):
+            if (self.current_image.ndim == 3):
                 save_current = np.flip(self.current_image, 1)
                 save_current = np.transpose(save_current, (1, 0, 2))
                 io.imsave(save_image, save_current)
@@ -268,7 +268,7 @@ class filedialog(QWidget):
         self.current_image = io.imread("temp.tif")
         os.remove("temp.tif")
         self.labels.setPixmap(image_added2)
-        if (self.user_image.ndim == 3):
+        if (self.current_image.ndim == 3):
             self.current_image = np.transpose(self.current_image, (1, 0, 2))
             self.current_image = np.flip(self.current_image, 1)
         
