@@ -36,6 +36,7 @@ import scipy.io
 from scipy.stats import iqr
 
 import qimage2ndarray
+from model import *
 
 colors =  {
             'lightest':"#eeeeee",
@@ -117,7 +118,7 @@ class filedialog(QWidget):
         self.button_justTransFile.clicked.connect(self.justTransFile)
         self.button_transformFile.clicked.connect(self.transformFile)
         self.button_transformDir.clicked.connect(self.transformDir)
-        #self.button_getModel.clicked.connect(self.getModel)
+        self.button_getModel.clicked.connect(self.getModel)
         
         self.one.addWidget(self.button_getFile)
         self.one.addWidget(self.button_saveFile)
@@ -159,7 +160,7 @@ class filedialog(QWidget):
         and displays it on the interface.
         Through QFileDialog, this function grabs the user's choice of file name
         and uses functions toQImage and other built-ins to display the associated image on the interface.
-    
+        
         Parameters
         ===========
         self: instance of class - uses user's choice of file name
@@ -277,7 +278,7 @@ class filedialog(QWidget):
         This function TRANSFORMS the current image shown on the interface using justTransFile
         and utilizes QFileDialog to save the image under user's choice of file name.
         The transformed image is displayed on the interface.
-    
+        
         Parameters
         ===========
         self: instance of class - uses current image shown
@@ -301,7 +302,7 @@ class filedialog(QWidget):
         and transforms all tif images in that directory, writing them to file with the tag "_transformed.tif."
         Function getFileNames is used to get all file names in chosen directory.
         Here, transforming an image is rotating the image by 90 degrees.
-    
+        
         Parameters
         ===========
         self: instance of class - uses user's choice of directory
@@ -340,7 +341,7 @@ class filedialog(QWidget):
         '''
         This function grabs all tif file names in a given directory
         and makes and returns a list of the names.
-    
+        
         Parameters
         ===========
         self: instance of class - uses user's choice of directory
@@ -359,7 +360,29 @@ class filedialog(QWidget):
                         img_filelist.append(os.path.join(current_location, img_file))
         img_filelist.sort()
         return img_filelist
-    
+        
+    def getModel(self):
+        '''
+        This function grabs user's choice of model through QFileDialog.
+        User's choice of model is used to transform images.
+        
+        Parameters
+        ===========
+        self: instance of class - uses user's choice of model
+        
+        Outputs
+        ===========
+        Saves user's choice of model
+        No returns
+        '''
+        #grabbing model of user's choice
+        model_file = QtGui.QFileDialog.getOpenFileName(self, 'Open Model', 'c:\\', "HDF5 files (*.hdf5)")
+        model_name = model_file[0]
+        
+        #showing image if user actually selected an image
+        if (model_name != ""):
+            print("yes")
+        
     def wheelEvent(self, event):
         '''
         This function redirects wheelEvent so when wheel is rotated up, function updateSlice is called to increase the slice viewed, and
