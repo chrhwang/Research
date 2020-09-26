@@ -153,6 +153,7 @@ class filedialog(QWidget):
         image_added = QPixmap('C:\cygwin64\home\chrhw\Research\dog.tif')
         self.labels.setPixmap(image_added)
         self.one.addWidget(self.labels)
+        self.model_name = ""
         
     def getFile(self):
         '''
@@ -208,8 +209,9 @@ class filedialog(QWidget):
                     image_added1 = QPixmap(open_image)
                     self.labels.setPixmap(image_added1)
             
-            #handling non-3 shape
+            #handling 2d shape
             else:
+                self.rows, self.cols = self.user_image.shape
                 self.current_image = self.user_image
                 image_added1 = QPixmap(open_image)
                 self.labels.setPixmap(image_added1)
@@ -257,21 +259,19 @@ class filedialog(QWidget):
         No returns
         '''
         self.slice_number.clear()
-        #TODO: change np. flip into appropriate transformation and test
-        
-        #transforming to user's image
-        #change later (TRANSFORM)
-        self.current_image = np.flip(self.current_image, 1)
-        
-        #displaying transformed user's image on interface
-        io.imsave('temp.tif', self.current_image)
-        image_added2 = QPixmap("temp.tif")
-        self.current_image = io.imread("temp.tif")
-        os.remove("temp.tif")
-        self.labels.setPixmap(image_added2)
-        if (self.current_image.ndim == 3):
-            self.current_image = np.transpose(self.current_image, (1, 0, 2))
-            self.current_image = np.flip(self.current_image, 1)
+        #if model is provided
+        if (self.model_name != ""):
+            output_img = process_single(file_path = self.current_image,
+                                            target_size = self.input_size,
+                                            MODEL_OBJECT = MODEL_OBJECT,
+                                            threshold = None)
+            #resizing and displaying output image
+            resized_output = resize_tifstack(output_img, target_size = (self.rows, self.cols))
+            io.imsave('temp.tif', resized_output)
+            image_added2 = QPixmap("temp.tif")
+            self.current_image = io.imread("temp.tif")
+            os.remove("temp.tif")
+            self.labels.setPixmap(image_added2)
         
     def transformFile(self):
         '''
@@ -377,11 +377,14 @@ class filedialog(QWidget):
         '''
         #grabbing model of user's choice
         model_file = QtGui.QFileDialog.getOpenFileName(self, 'Open Model', 'c:\\', "HDF5 files (*.hdf5)")
-        model_name = model_file[0]
+        self.model_name = model_file[0]
         
-        #showing image if user actually selected an image
-        if (model_name != ""):
-            print("yes")
+        #using model if user actually chose a model
+        if (self.model_name != ""):
+            #loading model
+            self.input_size = (512, 512)
+            self.MODEL_OBJECT = U_net(training_dropout = False, input_size = (*self.input_size, 1))
+            self.MODEL_OBJECT.load_weights(model_name)
         
     def wheelEvent(self, event):
         '''
@@ -446,7 +449,7 @@ class filedialog(QWidget):
 class Widget(QWidget):
     def __init__(self, app, parent=None):
         super(Widget, self).__init__(parent=parent)
-
+        
         #setting up a graphics window
         self.setStyleSheet(f"Widget {{ background-color: {colors['dark']}; }}")
         self.setWindowTitle("Tif Image Viewer")
@@ -454,8 +457,8 @@ class Widget(QWidget):
         #adding filedialog class to graphics window
         self.horizontalLayout = QHBoxLayout(self)
         self.horizontalLayout.addWidget(filedialog(parent=self))
-
-
+    
+    
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     w = Widget(app)
